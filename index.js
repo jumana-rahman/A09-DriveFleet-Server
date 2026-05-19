@@ -40,6 +40,13 @@ async function run() {
         res.send(result);
     });
 
+    app.get("/available", async(req, res) => {
+        const cursor = carsCollection.find().limit(6);
+        const result = await cursor.toArray();
+        // console.log(result);
+        res.send(result);
+    });
+
     app.get("/cars/:id", async(req, res) => {
         const {id} = req.params;
         // console.log(id);
