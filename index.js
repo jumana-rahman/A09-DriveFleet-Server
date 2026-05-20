@@ -77,7 +77,7 @@ async function run() {
 
       let cursor;
       if(search){
-        cursor = carsCollection.find({title: search});
+        cursor = await carsCollection.find({carName: {$regex: search, $options: 'i'}});
       }
       else{
         cursor = carsCollection.find();
@@ -102,6 +102,28 @@ async function run() {
         const result = await carsCollection.findOne(query);
         res.send(result);
 
+    });
+
+    app.post("/cars", verifyToken, async (req, res) => {
+      try {
+        const car = req.body;
+
+        car.userId = req.user?.sub || req.user?.id;
+        car.createdAt = new Date();
+
+        const result = await carsCollection.insertOne(car);
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to add car" });
+      }
+    });
+
+    app.get("/booking/:userId", verifyToken, async (req, res) => {
+      const {userId} = req.params;
+      const result = await carsCollection.find({userId: userId}).toArray();
+      res.send(result);
     });
 
     app.patch("/booking/:id", verifyToken, async (req, res) => {
