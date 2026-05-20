@@ -38,6 +38,7 @@ const verifyToken = async (req, res, next) => {
   const { authorization } = req.headers;
   // console.log(req.headers, 'from verify token');
   const token = authorization?.split("")[1];
+  console.log(token)
   
   if(!token){
     return res.status(401).json({message: 'Unauthorized'});
@@ -68,12 +69,22 @@ async function run() {
 
     const db = client.db("drivefleetdb");
     const carsCollection = db.collection("cars");
+    const bookingCollection = db.collection("bookings");
 
     app.get("/cars", async(req, res) => {
-        const cursor = carsCollection.find();
-        const result = await cursor.toArray();
-        // console.log(result);
-        res.send(result);
+      const {search} = req.query;
+
+      let cursor;
+      if(search){
+        cursor = carsCollection.find({title: search});
+      }
+      else{
+        cursor = carsCollection.find();
+      }
+
+      const result = await cursor.toArray();
+      console.log(result);
+      res.send(result);
     });
 
     app.get("/available", async(req, res) => {
@@ -90,6 +101,29 @@ async function run() {
         const result = await carsCollection.findOne(query);
         res.send(result);
 
+    });
+
+    app.patch("/booking/:id", verifyToken, async (req, res) => {
+      const {id} = req.params;
+      const bookingData = req.body;
+
+      const car = await carsCollection.findOne({_id: new ObjectId(id)});
+
+      if(!car){
+        res.status(404).json({message: 'Car not found'});
+      }
+      await carsCollection.updateOne({_id: new ObjectId(id)});
+      $inc: {bookingCount: 1}
+      $set: {
+        lastBookingAt: new Date()
+      }
+
+      const result = await bookingCollection.insertOne({
+        ...bookingData,
+        bookedAt: new Date()
+      })
+
+      res.send(result)
     });
 
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
