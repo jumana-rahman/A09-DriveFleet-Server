@@ -7,6 +7,7 @@ const cors = require("cors");
 dotenv.config();
 const app = express();
 app.use(cors());
+app.use(express.json());
 
 const port = process.env.PORT || 8080;
 
@@ -37,7 +38,7 @@ const logger = (req, res, next) => {
 const verifyToken = async (req, res, next) => {
   const { authorization } = req.headers;
   // console.log(req.headers, 'from verify token');
-  const token = authorization?.split("")[1];
+  const token = authorization?.split(" ")[1];
   console.log(token)
   
   if(!token){
@@ -112,12 +113,14 @@ async function run() {
       if(!car){
         res.status(404).json({message: 'Car not found'});
       }
-      await carsCollection.updateOne({_id: new ObjectId(id)});
-      $inc: {bookingCount: 1}
+      await carsCollection.updateOne({_id: new ObjectId(id)},
+      {
+      $inc: {bookingCount: 1},
       $set: {
         lastBookingAt: new Date()
       }
-
+      });
+        console.log(bookingData)
       const result = await bookingCollection.insertOne({
         ...bookingData,
         bookedAt: new Date()
