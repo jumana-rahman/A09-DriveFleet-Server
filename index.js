@@ -134,9 +134,57 @@ async function run() {
       }
     });
 
+    app.delete("/cars/:id", verifyToken, async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const result = await carsCollection.deleteOne({
+          _id: new ObjectId(id),
+          userId: req.user?.sub || req.user?.id, // IMPORTANT: only owner can delete
+        });
+
+        if (result.deletedCount === 0) {
+          return res.status(403).json({ message: "Not authorized or not found" });
+        }
+          res.send({ message: "Car deleted successfully" });
+      } catch (error) {
+          res.status(500).json({ message: "Failed to delete car" });
+        }
+    });
+
+    app.patch("/cars/:id", verifyToken, async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const updatedData = req.body;
+
+        const result = await carsCollection.updateOne(
+          {
+            _id: new ObjectId(id),
+            userId: req.user?.sub || req.user?.id,
+          },
+          {
+            $set: {
+              dailyRentPrice: updatedData.dailyRentPrice,
+              description: updatedData.description,
+              availability: updatedData.availability,
+              image: updatedData.image,
+              carType: updatedData.carType,
+              pickupLocation: updatedData.pickupLocation,
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).json({ message: "Failed to update car" });
+      }
+    });
+
     app.get("/booking/:userId", verifyToken, async (req, res) => {
       const {userId} = req.params;
-      const result = await carsCollection.find({userId: userId}).toArray();
+      const result = await bookingCollection.find({userId: userId}).toArray();
       res.send(result);
     });
 
@@ -144,7 +192,7 @@ async function run() {
       const {id} = req.params;
       const bookingData = req.body;
 
-      const car = await carsCollection.findOne({_id: new ObjectId(id)});
+      const car = await bookingCollection.findOne({_id: new ObjectId(id)});
 
       if(!car){
         res.status(404).json({message: 'Car not found'});
