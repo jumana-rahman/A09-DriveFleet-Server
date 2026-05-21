@@ -111,7 +111,7 @@ async function run() {
     });
 
     app.get("/available", async(req, res) => {
-        const cursor = carsCollection.find().limit(6);
+        const cursor = carsCollection.find( { availability: "Available" } ).limit(6);
         const result = await cursor.toArray();
         // console.log(result);
         res.send(result);
