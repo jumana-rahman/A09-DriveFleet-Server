@@ -86,19 +86,27 @@ async function run() {
       }
     });
 
-    app.get("/cars", async(req, res) => {
-      const {search} = req.query;
+    app.get("/cars", async (req, res) => {
 
-      let cursor;
-      if(search){
-        cursor = await carsCollection.find({carName: {$regex: search, $options: 'i'}});
-      }
-      else{
-        cursor = carsCollection.find();
+      const { search, type } = req.query;
+
+      let query = {};
+
+      // SEARCH
+      if (search) {
+        query.carName = {
+          $regex: search,
+          $options: "i",
+        };
       }
 
-      const result = await cursor.toArray();
-      console.log(result);
+      // FILTER
+      if (type && type !== "All") {
+        query.carType = type;
+      }
+
+      const result = await carsCollection.find(query).toArray();
+
       res.send(result);
     });
 
@@ -189,28 +197,62 @@ async function run() {
     });
 
     app.patch("/booking/:id", verifyToken, async (req, res) => {
-      const {id} = req.params;
-      const bookingData = req.body;
+      try {
+        const { id } = req.params;
 
-      const car = await bookingCollection.findOne({_id: new ObjectId(id)});
+        const bookingData = req.body;
 
-      if(!car){
-        res.status(404).json({message: 'Car not found'});
+        const car = await carsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!car) {
+          return res.status(404).json({
+            message: "Car not found",
+          });
+        }
+
+        await carsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $inc: {
+              bookingCount: 1,
+            },
+            $set: {
+              lastBookingAt: new Date(),
+            },
+          }
+        );
+
+        const result = await bookingCollection.insertOne({
+          userId: bookingData.userId,
+          userName: bookingData.userName,
+          userEmail: bookingData.userEmail,
+
+          carId: id,
+          carName: car.carName,
+          image: car.image,
+          carType: car.carType,
+          pickupLocation: car.pickupLocation,
+          dailyRentPrice: car.dailyRentPrice,
+          seatCapacity: car.seatCapacity,
+          availability: car.availability,
+
+          driverNeeded: bookingData.driverNeeded,
+          specialNote: bookingData.specialNote,
+
+          bookedAt: new Date(),
+        });
+
+        res.send(result);
+
+      } catch (error) {
+        console.log(error);
+
+        res.status(500).json({
+          message: "Booking failed",
+        });
       }
-      await carsCollection.updateOne({_id: new ObjectId(id)},
-      {
-      $inc: {bookingCount: 1},
-      $set: {
-        lastBookingAt: new Date()
-      }
-      });
-        console.log(bookingData)
-      const result = await bookingCollection.insertOne({
-        ...bookingData,
-        bookedAt: new Date()
-      })
-
-      res.send(result)
     });
 
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -229,6 +271,3 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
-
-// username: drivefleet_server
-// password: F0wme8QXNBea2e4m
