@@ -72,6 +72,20 @@ async function run() {
     const carsCollection = db.collection("cars");
     const bookingCollection = db.collection("bookings");
 
+    app.get("/my-cars", verifyToken, async (req, res) => {
+      try {
+        const userId = req.user?.sub || req.user?.id;
+
+        const cars = await carsCollection
+          .find({ userId })
+          .toArray();
+
+        res.send(cars);
+      } catch (error) {
+        res.status(500).json({ message: "Failed to fetch cars" });
+      }
+    });
+
     app.get("/cars", async(req, res) => {
       const {search} = req.query;
 
