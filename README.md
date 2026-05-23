@@ -68,5 +68,5 @@ npm run dev
 
 ```
 
-👨‍💻 Developer
+## 👨‍💻 Developer
 Developed by Jumana
